@@ -1,31 +1,99 @@
-import { StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  TextInput, 
+  FlatList, 
+  Text, 
+  TouchableOpacity, 
+  View, 
+  StyleSheet, 
+  ListRenderItem, 
+  SafeAreaView, 
+  Platform, 
+  StatusBar 
+} from 'react-native';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+interface SearchResult {
+  _id: string;
+  name: string;
+}
 
 export default function TabOneScreen() {
+  const [query, setQuery] = useState<string>(''); // State for search query
+  const [results, setResults] = useState<SearchResult[]>([]); // State for search results
+
+  const fetchSuggestions = async (searchQuery: string) => {
+    if (!searchQuery) {
+      setResults([]);
+      return;
+    }
+    try {
+      const response = await fetch(`http://<your-server-ip>:3000/search?query=${searchQuery}`);
+      const data: SearchResult[] = await response.json();
+      setResults(data);
+    } catch (error) {
+      console.error('Error fetching autocomplete results:', error);
+    }
+  };
+
+  const handleChangeText = (text: string) => {
+    setQuery(text);
+    fetchSuggestions(text);
+  };
+
+  const renderItem: ListRenderItem<SearchResult> = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.item} 
+      onPress={() => alert(`You selected: ${item.name}`)}
+    >
+      <Text>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <TextInput
+          style={styles.searchBox}
+          placeholder="Search..."
+          value={query}
+          onChangeText={handleChangeText}
+        />
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          style={styles.resultsList}
+          keyboardShouldPersistTaps="handled" // Ensures keyboard dismiss behavior
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, // Avoid overlap on Android
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 16,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  searchBox: {
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 8, // Add spacing between search box and results
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  resultsList: {
+    marginTop: 8,
+  },
+  item: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
 });
